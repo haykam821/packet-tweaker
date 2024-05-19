@@ -24,7 +24,7 @@ public final class PacketContext {
         return INSTANCE.get();
     }
 
-    public static void runWithContext(@Nullable PacketListener networkHandler, @Nullable Packet<?> packet, Runnable runnable) {
+    public static void runWithContext(@Nullable ClientConnection connection, @Nullable PacketListener networkHandler, @Nullable Packet<?> packet, Runnable runnable) {
         if (networkHandler == null) {
             runnable.run();
             return;
@@ -33,12 +33,19 @@ public final class PacketContext {
         PacketContext context = PacketContext.get();
         var oldTarget = context.target;
         var oldPacket = context.encodedPacket;
+        var oldConnection = context.connection;
         context.target = (ContextProvidingPacketListener) networkHandler;
         context.encodedPacket = packet;
+        context.connection = connection;
         runnable.run();
         context.target = oldTarget;
         context.encodedPacket = oldPacket;
+        context.connection = oldConnection;
     }
+    public static void runWithContext(@Nullable PacketListener networkHandler, @Nullable Packet<?> packet, Runnable runnable) {
+        runWithContext(((ContextProvidingPacketListener) networkHandler).getClientConnectionForPacketTweaker(), networkHandler, packet, runnable);
+    }
+
     public static void runWithContext(@Nullable PacketListener networkHandler, Runnable runnable) {
         runWithContext(networkHandler, null, runnable);
     }
@@ -58,6 +65,7 @@ public final class PacketContext {
     public static void clearContext() {
         PacketContext context = PacketContext.get();
         context.target = ContextProvidingPacketListener.EMPTY;
+        context.connection = null;
         context.encodedPacket = null;
     }
 

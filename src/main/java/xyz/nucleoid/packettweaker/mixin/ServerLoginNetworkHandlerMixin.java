@@ -5,6 +5,7 @@ import net.minecraft.network.ClientConnection;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerCommonNetworkHandler;
+import net.minecraft.server.network.ServerLoginNetworkHandler;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -12,27 +13,29 @@ import org.spongepowered.asm.mixin.Shadow;
 import xyz.nucleoid.packettweaker.ContextProvidingPacketListener;
 
 @SuppressWarnings("AddedMixinMembersNamePattern")
-@Mixin(ServerCommonNetworkHandler.class)
-public abstract class ServerCommonNetworkHandlerMixin implements ContextProvidingPacketListener {
-    @Shadow @Final protected MinecraftServer server;
+@Mixin(ServerLoginNetworkHandler.class)
+public abstract class ServerLoginNetworkHandlerMixin implements ContextProvidingPacketListener {
 
-    @Shadow protected abstract GameProfile getProfile();
+    @Shadow @Final
+    MinecraftServer server;
 
-    @Shadow @Final protected ClientConnection connection;
+    @Shadow @Final
+    ClientConnection connection;
+
+    @Shadow @Nullable private GameProfile profile;
 
     @Override
     public @Nullable RegistryWrapper.WrapperLookup getWrapperLookupForPacketTweaker() {
         return this.server.getRegistryManager();
     }
 
-
-    @Override
-    public @Nullable GameProfile getGameProfileForPacketTweaker() {
-        return this.getProfile();
-    }
-
     @Override
     public @Nullable ClientConnection getClientConnectionForPacketTweaker() {
         return this.connection;
+    }
+
+    @Override
+    public @Nullable GameProfile getGameProfileForPacketTweaker() {
+        return this.profile;
     }
 }
