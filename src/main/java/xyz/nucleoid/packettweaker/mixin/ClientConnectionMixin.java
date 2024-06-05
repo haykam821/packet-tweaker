@@ -6,13 +6,20 @@ import net.minecraft.network.NetworkState;
 import net.minecraft.network.listener.PacketListener;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import xyz.nucleoid.packettweaker.PacketContext;
+import xyz.nucleoid.packettweaker.impl.ConnectionClientAttachment;
 import xyz.nucleoid.packettweaker.impl.ConnectionHolder;
 
+import java.util.IdentityHashMap;
+
 @Mixin(ClientConnection.class)
-public class ClientConnectionMixin {
+public class ClientConnectionMixin implements ConnectionClientAttachment {
+    @Unique
+    private final IdentityHashMap<PacketContext.Key<?>, Object> dataMap = new IdentityHashMap<>();
 
     @Shadow
     private Channel channel;
@@ -35,4 +42,19 @@ public class ClientConnectionMixin {
         }
     }
 
+    @Override
+    public <T> T packetTweaker$get(PacketContext.Key<T> key) {
+        //noinspection unchecked
+        return (T) this.dataMap.get(key);
+    }
+
+    @Override
+    public <T> T packetTweaker$set(PacketContext.Key<T> key, T data) {
+        if (data == null) {
+            //noinspection unchecked
+            return (T) this.dataMap.remove(key);
+        }
+        //noinspection unchecked
+        return (T) this.dataMap.put(key, data);
+    }
 }

@@ -10,6 +10,7 @@ import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.network.ServerPlayerEntity;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
+import xyz.nucleoid.packettweaker.impl.ConnectionClientAttachment;
 
 public final class PacketContext {
     private static final ThreadLocal<PacketContext> INSTANCE = ThreadLocal.withInitial(PacketContext::new);
@@ -50,6 +51,28 @@ public final class PacketContext {
         runWithContext(networkHandler, null, runnable);
     }
 
+    public static PacketContext of(ServerPlayerEntity player) {
+        return of(player.networkHandler);
+    }
+
+    public static PacketContext of(PacketListener listener) {
+        var ctx = new PacketContext();
+        ctx.target = (ContextProvidingPacketListener) listener;
+        ctx.connection = ctx.target.getClientConnectionForPacketTweaker();
+        return ctx;
+    }
+
+    public static PacketContext of(ClientConnection connection) {
+        var ctx = new PacketContext();
+        ctx.target = (ContextProvidingPacketListener) connection.getPacketListener();
+        ctx.connection = connection;
+        return ctx;
+    }
+
+    public static PacketContext of() {
+        return new PacketContext();
+    }
+
     @ApiStatus.Internal
     public static void setContext(@Nullable ClientConnection connection, @Nullable Packet<?> packet) {
         if (connection == null) {
@@ -62,6 +85,8 @@ public final class PacketContext {
         context.connection = connection;
         context.encodedPacket = packet;
     }
+
+    @ApiStatus.Internal
     public static void clearContext() {
         PacketContext context = PacketContext.get();
         context.target = ContextProvidingPacketListener.EMPTY;
@@ -103,7 +128,60 @@ public final class PacketContext {
     }
 
     @Nullable
+    public <T> T getData(Key<T> key) {
+        return getData(this.connection, key);
+    }
+
+    @Nullable
+    public <T> T setData(Key<T> key, @Nullable T data) {
+        return setData(this.connection, key, data);
+    }
+
+    @Nullable
     public Packet<?> getEncodedPacket() {
         return this.encodedPacket;
+    }
+
+    public static final class Key<T> {
+        private final String id;
+        private Key(String id) {
+            this.id = id;
+        }
+
+        public static <T> Key<T> of(String id) {
+            return new Key<>(id);
+        }
+
+        @Override
+        public String toString() {
+            return "Key[" + this.id +']';
+        }
+    }
+
+    @Nullable
+    public static <T> T getData(PacketListener listener, Key<T> key) {
+        return getData(((ContextProvidingPacketListener) listener).getClientConnectionForPacketTweaker(), key);
+    }
+
+    @Nullable
+    public static  <T> T setData(PacketListener listener, Key<T> key, @Nullable T data) {
+        return setData(((ContextProvidingPacketListener) listener).getClientConnectionForPacketTweaker(), key, data);
+
+    }
+
+    @Nullable
+    public static  <T> T getData(ClientConnection connection, Key<T> key) {
+        if (connection == null) {
+            return null;
+        }
+        return ((ConnectionClientAttachment) connection).packetTweaker$get(key);
+    }
+
+    @Nullable
+    public static  <T> T setData(ClientConnection connection, Key<T> key, @Nullable T data) {
+        if (connection == null) {
+            return null;
+        }
+        return ((ConnectionClientAttachment) connection).packetTweaker$set(key, data);
     }
 }
